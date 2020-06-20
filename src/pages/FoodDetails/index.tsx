@@ -72,35 +72,71 @@ const FoodDetails: React.FC = () => {
   const routeParams = route.params as Params;
 
   useEffect(() => {
+    async function inicialiseFavorite(): Promise<void> {
+      await api.get<Food[]>('favorites').then(response => {
+        const isFav = response.data.find(apiFood => food.id === apiFood.id);
+
+        setIsFavorite(!!isFav);
+      });
+    }
+    inicialiseFavorite();
+  }, [food.id]);
+
+  useEffect(() => {
     async function loadFood(): Promise<void> {
-      // Load a specific food with extras based on routeParams id
+      await api.get<Food>(`foods/${routeParams.id}`).then(response => {
+        setFood(response.data);
+
+        const formattedExtras = response.data.extras.map(extra => ({
+          ...extra,
+          quantity: 0,
+        }));
+
+        setExtras(formattedExtras);
+      });
     }
 
     loadFood();
   }, [routeParams]);
 
   function handleIncrementExtra(id: number): void {
-    // Increment extra quantity
+    const newExtras = extras.map(extra => {
+      return extra.id !== id
+        ? extra
+        : { ...extra, quantity: extra.quantity + 1 };
+    });
+    setExtras(newExtras);
   }
 
   function handleDecrementExtra(id: number): void {
-    // Decrement extra quantity
+    const newExtras = extras.map(extra => {
+      return extra.id !== id
+        ? extra
+        : { ...extra, quantity: Math.max(extra.quantity - 1, 0) };
+    });
+    setExtras(newExtras);
   }
 
   function handleIncrementFood(): void {
-    // Increment food quantity
+    setFoodQuantity(foodQuantity + 1);
   }
 
   function handleDecrementFood(): void {
-    // Decrement food quantity
+    setFoodQuantity(Math.max(foodQuantity - 1, 1));
   }
 
   const toggleFavorite = useCallback(() => {
-    // Toggle if food is favorite or not
-  }, [isFavorite, food]);
+    setIsFavorite(state => !state);
+  }, []);
 
   const cartTotal = useMemo(() => {
-    // Calculate cartTotal
+    const extrasCost = extras.reduce((acc, extra) => {
+      return acc + extra.value * extra.quantity;
+    }, 0);
+    const foodCost = Number(food.price) + extrasCost;
+    const totalCost = foodCost * foodQuantity;
+
+    return formatValue(totalCost);
   }, [extras, food, foodQuantity]);
 
   async function handleFinishOrder(): Promise<void> {
@@ -159,6 +195,7 @@ const FoodDetails: React.FC = () => {
                   size={15}
                   color="#6C6C80"
                   name="minus"
+                  style={{ paddingHorizontal: 10 }}
                   onPress={() => handleDecrementExtra(extra.id)}
                   testID={`decrement-extra-${extra.id}`}
                 />
@@ -169,6 +206,7 @@ const FoodDetails: React.FC = () => {
                   size={15}
                   color="#6C6C80"
                   name="plus"
+                  style={{ paddingHorizontal: 10 }}
                   onPress={() => handleIncrementExtra(extra.id)}
                   testID={`increment-extra-${extra.id}`}
                 />
